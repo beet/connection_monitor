@@ -1,4 +1,4 @@
-require 'net/http'
+require "socket"
 require "ostruct"
 
 class ConnectionMonitor
@@ -55,7 +55,11 @@ class ConnectionMonitor
 
   def get_connection_status
     begin
-      return CONNECTION_STATUSES.online if Net::HTTP.get(uri)
+      if socket = TCPSocket.new("google.com", 80)
+        socket.close
+
+        return CONNECTION_STATUSES.online
+      end
     rescue SocketError => e
       @attempts += 1
 
