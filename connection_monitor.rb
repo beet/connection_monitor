@@ -1,5 +1,6 @@
 require "socket"
 require "ostruct"
+require "timeout"
 
 class ConnectionMonitor
   POLLING_INTERVAL = 3
@@ -55,12 +56,14 @@ class ConnectionMonitor
 
   def get_connection_status
     begin
-      if socket = TCPSocket.new("google.com", 80)
-        socket.close
+      Timeout::timeout(5, Errno::EHOSTUNREACH) do
+        if socket = TCPSocket.new("google.com", 80)
+          socket.close
 
-        return CONNECTION_STATUSES.online
+          return CONNECTION_STATUSES.online
+        end
       end
-    rescue SocketError => e
+    rescue SocketError, Errno::EHOSTUNREACH => e
       @attempts += 1
 
       return CONNECTION_STATUSES.offline
