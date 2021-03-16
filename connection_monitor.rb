@@ -15,9 +15,10 @@ class ConnectionMonitor
 
   attr_reader :outages, :connection_status
 
-  def initialize
+  def initialize(args)
     @outages = []
     @connection_status = nil
+    @debug_mode = args.include?("--debug")
   end
 
   def start
@@ -60,9 +61,17 @@ class ConnectionMonitor
     connection_status == CONNECTION_STATUSES.offline
   end
 
+  def debug_mode?
+    @debug_mode == true
+  end
+
   private
 
   def get_connection_status
+    if debug_mode?
+      return rand(100) > 75 ? CONNECTION_STATUSES.online : CONNECTION_STATUSES.offline
+    end
+
     begin
       Timeout::timeout(5, Errno::EHOSTUNREACH) do
         if socket = TCPSocket.new("google.com", 80)
@@ -136,4 +145,4 @@ class ConnectionMonitor
   end
 end
 
-ConnectionMonitor.new.start
+ConnectionMonitor.new(ARGV).start
