@@ -2,9 +2,15 @@ require "socket"
 require "ostruct"
 require "timeout"
 
+Dir["#{__dir__}/lib/**/*.rb"].each do |file|
+  require_relative file
+end
+
 class ConnectionMonitor
   POLLING_INTERVAL = 3
   CONNECTION_STATUSES = OpenStruct.new(online: 1, offline: 0)
+
+  using ColourizedStrings
 
   attr_reader :attempts, :outages, :connection_status
 
@@ -29,10 +35,10 @@ class ConnectionMonitor
 
         @connection_status = current_connection_status
 
-        `say "Internet connection #{connection_status_string}"`
+        alert
       end
 
-      print online? ? "." : "X"
+      print_connection_status
 
       sleep POLLING_INTERVAL
     end
@@ -41,7 +47,7 @@ class ConnectionMonitor
   end
 
   def connection_status_string
-    online? ? "online" : "off-line"
+    online? ? "Online" : "Off-line"
   end
 
   def online?
@@ -72,6 +78,20 @@ class ConnectionMonitor
 
   def uri
     URI("https://www.google.com")
+  end
+
+  def print_connection_status
+    print "\e[2J\e[f"
+
+    puts "Connection status: #{connection_status_string}".send(online? ? :green : :red)
+    puts "Outages:           #{outages}"
+    puts "Attempts:          #{attempts}".yellow if offline?
+  end
+
+  def alert
+    Process.spawn(%(osascript -e 'display notification "#{@outages} outages" with title "Internet Connection Monitor" subtitle "#{connection_status_string}" sound name "Submarine"'))
+
+    Process.spawn(%(osascript -e 'say "Internet connection #{connection_status_string}"'))
   end
 end
 
