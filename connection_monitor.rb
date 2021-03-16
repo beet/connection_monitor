@@ -11,12 +11,12 @@ class ConnectionMonitor
   CONNECTION_STATUSES = OpenStruct.new(online: 1, offline: 0)
 
   using ColourizedStrings
+  using TimeFormats
 
-  attr_reader :attempts, :outages, :connection_status
+  attr_reader :outages, :connection_status
 
   def initialize
-    @attempts = 0
-    @outages = 0
+    @outages = []
     @connection_status = nil
   end
 
@@ -26,11 +26,11 @@ class ConnectionMonitor
 
       if current_connection_status != connection_status
         if current_connection_status == CONNECTION_STATUSES.online
-          @attempts = 0
+          close_current_outage
         end
 
         if current_connection_status == CONNECTION_STATUSES.offline
-          @outages += 1
+          open_new_outage
         end
 
         @connection_status = current_connection_status
@@ -38,12 +38,14 @@ class ConnectionMonitor
         alert
       end
 
+      log_connection_attempt
+
       print_connection_status
 
       sleep POLLING_INTERVAL
     end
   rescue Interrupt => exception
-    puts "\n\nInternet connection experienced #{outages} outages"
+    print_outage_summary
   end
 
   def connection_status_string
@@ -70,8 +72,6 @@ class ConnectionMonitor
         end
       end
     rescue SocketError, Errno::EHOSTUNREACH => e
-      @attempts += 1
-
       return CONNECTION_STATUSES.offline
     end
   end
@@ -84,14 +84,55 @@ class ConnectionMonitor
     print "\e[2J\e[f"
 
     puts "Connection status: #{connection_status_string}".send(online? ? :green : :red)
-    puts "Outages:           #{outages}"
-    puts "Attempts:          #{attempts}".yellow if offline?
+    puts "Outages:           #{outages_count}, #{outage_duration_string}"
+
+    return if current_outage.nil?
+
+    puts "Current outage:    #{current_outage.summary}".yellow if offline?
+    puts "Last outage:       #{current_outage.summary}" if online?
   end
 
   def alert
-    Process.spawn(%(osascript -e 'display notification "#{@outages} outages" with title "Internet Connection Monitor" subtitle "#{connection_status_string}" sound name "Submarine"'))
+    Process.spawn(%(osascript -e 'display notification "#{outages_count} outages" with title "Internet Connection Monitor" subtitle "#{connection_status_string}" sound name "Submarine"'))
 
     Process.spawn(%(osascript -e 'say "Internet connection #{connection_status_string}"'))
+  end
+
+  def open_new_outage
+    @outages << ConnectionOutage.new
+  end
+
+  def outages_count
+    outages.size
+  end
+
+  def log_connection_attempt
+    return if online?
+
+    current_outage.log_attempt
+  end
+
+  def close_current_outage
+    current_outage.close if current_outage
+  end
+
+  def current_outage
+    outages.last
+  end
+
+  def print_outage_summary
+    puts "\n\nInternet connection experienced #{outages_count} outages for a total of #{outage_duration_string}:\n\n"
+
+    puts outages.map(&:summary).join("\n")
+  end
+
+  def outage_duration_string
+    # Time.at(total_duration_seconds).gmtime.strftime('%R:%S')
+    total_duration_seconds.to_duration_string
+  end
+
+  def total_duration_seconds
+    outages.sum(&:duration_seconds)
   end
 end
 
