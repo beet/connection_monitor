@@ -80,7 +80,7 @@ class ConnectionMonitor
           return CONNECTION_STATUSES.online
         end
       end
-    rescue SocketError, Errno::EHOSTUNREACH => e
+    rescue SocketError, Errno::EHOSTUNREACH, Errno::ENETUNREACH => e
       return CONNECTION_STATUSES.offline
     end
   end
