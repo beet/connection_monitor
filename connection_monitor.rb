@@ -1,6 +1,8 @@
+#!/usr/bin/env ruby
 require "socket"
 require "ostruct"
 require "timeout"
+require "fileutils"
 
 Dir["#{__dir__}/lib/**/*.rb"].each do |file|
   require_relative file
@@ -19,9 +21,13 @@ class ConnectionMonitor
     @outages = []
     @connection_status = nil
     @debug_mode = args.include?("--debug")
+    @daemonize = args.include?("--daemonize")
+    @stop = args.include?("--stop")
   end
 
   def start
+    daemonize
+
     while true
       current_connection_status = get_connection_status
 
@@ -36,17 +42,25 @@ class ConnectionMonitor
 
         @connection_status = current_connection_status
 
+        print_connection_status if online?
+
         alert
       end
 
       log_connection_attempt
 
-      print_connection_status
+      print_connection_status if offline?
 
       sleep POLLING_INTERVAL
     end
-  rescue Interrupt => exception
+  rescue Interrupt, SignalException => exception
     print_outage_summary
+
+    if daemonized?
+      alert
+
+      Daemon.cleanup
+    end
   end
 
   def connection_status_string
@@ -65,7 +79,29 @@ class ConnectionMonitor
     @debug_mode == true
   end
 
+  def daemonized?
+    @daemonize == true
+  end
+
   private
+
+  def daemonize
+    if Daemon.running? and @stop
+      Daemon.stop!
+
+      exit
+    end
+
+    return unless daemonized?
+
+    if Daemon.running?
+      puts "Daemon already running with PID #{Daemon.pid}"
+
+      exit
+    else
+      Daemon.daemonize!
+    end
+  end
 
   def get_connection_status
     if debug_mode?
@@ -90,7 +126,7 @@ class ConnectionMonitor
   end
 
   def print_connection_status
-    print "\e[2J\e[f"
+    daemonized? ? puts("\n#{Time.now.to_time_string}:") : clear_screen
 
     puts "Connection status: #{connection_status_string}".send(online? ? :green : :red)
     puts "Outages:           #{outages_count}, #{outage_duration_string}"
@@ -99,6 +135,10 @@ class ConnectionMonitor
 
     puts "Current outage:    #{current_outage.summary}".yellow if offline?
     puts "Last outage:       #{current_outage.summary}" if online?
+  end
+
+  def clear_screen
+    print "\e[2J\e[f" 
   end
 
   def alert
@@ -130,13 +170,14 @@ class ConnectionMonitor
   end
 
   def print_outage_summary
-    puts "\n\nInternet connection experienced #{outages_count} outages for a total of #{outage_duration_string}:\n\n"
+    puts("\n#{Time.now.to_time_string}:") if daemonized?
+
+    puts "\nInternet connection experienced #{outages_count} outages for a total of #{outage_duration_string}:\n\n"
 
     puts outages.map(&:summary).join("\n")
   end
 
   def outage_duration_string
-    # Time.at(total_duration_seconds).gmtime.strftime('%R:%S')
     total_duration_seconds.to_duration_string
   end
 
