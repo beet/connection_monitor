@@ -20,9 +20,9 @@ class Daemon
 
     def running?
       begin
-        Process.getpgid(pid)
+        return false unless pid_file_exists?
 
-        true
+        !Process.getpgid(pid).nil?
       rescue Errno::ESRCH, Errno::ENOENT
         false
       end
@@ -30,6 +30,7 @@ class Daemon
 
     def pid
       open(filename("pid")).read.strip.to_i
+    rescue Errno::ENOENT
     end
 
     def stop!
@@ -40,9 +41,15 @@ class Daemon
 
     def cleanup
       File.delete(filename("pid"))
+    rescue Errno::ENOENT
+      puts "#{filename("pid")} already removed"
     end
 
     private
+
+    def pid_file_exists?
+      File.exist?(filename("pid"))
+    end
 
     def create_working_dir
       FileUtils.mkdir_p(BASE_DIR)
@@ -63,13 +70,13 @@ class Daemon
     def kill_process
       Process.kill("HUP", pid)
     rescue TypeError
-      $stdout.puts "#{pidfile} was empty: TypeError"
+      # $stdout.puts "#{filename("pid")} was empty: TypeError"
     rescue Errno::ENOENT
-      # $stdout.puts "#{pidfile} did not exist: Errno::ENOENT"
+      # $stdout.puts "#{filename("pid")} did not exist: Errno::ENOENT"
     rescue Errno::ESRCH
-      $stdout.puts "The process #{opid} did not exist: Errno::ESRCH"
+      $stdout.puts "The process #{pid} did not exist: Errno::ESRCH"
     rescue Errno::EPERM
-      raise "Lack of privileges to manage the process #{opid}: Errno::EPERM"
+      raise "Lack of privileges to manage the process #{pid}: Errno::EPERM"
     rescue ::Exception => e
       raise "While signaling the PID, unexpected #{e.class}: #{e}"
     end

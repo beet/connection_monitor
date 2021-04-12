@@ -29,3 +29,6 @@ Stop the daemon:
 
     ./connection_monitor.rb --stop
 
+Display a report of outages _(while running as a daemon)_:
+
+    ./connection_monitor.rb --reoprt

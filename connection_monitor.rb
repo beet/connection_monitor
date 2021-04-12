@@ -64,8 +64,6 @@ class ConnectionMonitor
 
     if daemonized?
       alert
-
-      Daemon.cleanup
     end
   end
 
@@ -147,7 +145,7 @@ class ConnectionMonitor
   end
 
   def print_connection_status
-    puts("\n#{Time.now.to_time_string}:") if daemonized?
+    puts("\n#{Time.now.long_time_string}:") if daemonized?
     clear_screen unless @show_summary
 
     puts "Connection status: #{connection_status_string}".send(online? ? :green : :red)
@@ -155,8 +153,8 @@ class ConnectionMonitor
 
     return if current_outage.nil?
 
-    puts "Current outage:    #{current_outage.summary}".yellow if offline?
-    puts "Last outage:       #{current_outage.summary}" if online?
+    puts "Current outage:    #{current_outage.long_summary}".yellow if offline?
+    puts "Last outage:       #{current_outage.long_summary}" if online?
   end
 
   def clear_screen
@@ -192,11 +190,9 @@ class ConnectionMonitor
   end
 
   def print_outage_summary
-    puts("\n#{Time.now.to_time_string}:") if daemonized?
+    puts("\n#{Time.now.long_time_string}:") if daemonized?
 
-    puts "\nInternet connection experienced #{outages_count} outages for a total of #{outage_duration_string}:\n\n"
-
-    puts outages.map(&:summary).join("\n")
+    puts OutageReport.new(outages).run
   end
 
   def outage_duration_string

@@ -1,3 +1,4 @@
+require "date"
 require_relative "#{__dir__}/time_formats.rb"
 
 class ConnectionOutage
@@ -34,12 +35,25 @@ class ConnectionOutage
     @end_time = Time.now
   end
 
-  def summary
+  def long_summary
     "%s - %s, duration %s, %d attempts" % [
-      start_time.to_time_string,
-      end_time.to_time_string,
+      start_time.long_time_string,
+      end_time.long_time_string,
       duration_string,
       attempts
     ]
+  end
+
+  def short_summary
+    "%s - %s, duration %s, %d attempts" % [
+      start_time.short_time_string,
+      end_time.short_time_string,
+      duration_string,
+      attempts
+    ]
+  end
+
+  def date
+    start_time.to_date
   end
 end
