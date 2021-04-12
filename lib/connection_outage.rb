@@ -15,12 +15,15 @@ class ConnectionOutage
   end
 
   def duration_string
-    # Time.at(duration_seconds).gmtime.strftime('%R:%S')
     duration_seconds.to_duration_string
   end
 
   def duration_seconds
     end_time - start_time
+  end
+
+  def resolved?
+    !@end_time.nil?
   end
 
   def end_time

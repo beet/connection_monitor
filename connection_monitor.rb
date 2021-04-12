@@ -3,6 +3,7 @@ require "socket"
 require "ostruct"
 require "timeout"
 require "fileutils"
+require "yaml"
 
 Dir["#{__dir__}/lib/**/*.rb"].each do |file|
   require_relative file
@@ -23,9 +24,12 @@ class ConnectionMonitor
     @debug_mode = args.include?("--debug")
     @daemonize = args.include?("--daemonize")
     @stop = args.include?("--stop")
+    @show_summary = args.include?("--report")
   end
 
   def start
+    show_daemon_summary
+
     daemonize
 
     while true
@@ -45,6 +49,8 @@ class ConnectionMonitor
         print_connection_status if online?
 
         alert
+
+        write_outages_yaml
       end
 
       log_connection_attempt
@@ -84,6 +90,21 @@ class ConnectionMonitor
   end
 
   private
+
+  def show_daemon_summary
+    return unless Daemon.running? && @show_summary
+
+    @outages = YAML.load(File.read(yaml_file))
+
+    @connection_status = @outages.any? && @outages.last.resolved? ? CONNECTION_STATUSES.online : CONNECTION_STATUSES.offline
+    @connection_status = CONNECTION_STATUSES.online if @outages.none?
+
+    print_connection_status
+
+    print_outage_summary
+
+    exit
+  end
 
   def daemonize
     if Daemon.running? and @stop
@@ -126,7 +147,8 @@ class ConnectionMonitor
   end
 
   def print_connection_status
-    daemonized? ? puts("\n#{Time.now.to_time_string}:") : clear_screen
+    puts("\n#{Time.now.to_time_string}:") if daemonized?
+    clear_screen unless @show_summary
 
     puts "Connection status: #{connection_status_string}".send(online? ? :green : :red)
     puts "Outages:           #{outages_count}, #{outage_duration_string}"
@@ -138,7 +160,7 @@ class ConnectionMonitor
   end
 
   def clear_screen
-    print "\e[2J\e[f" 
+    print "\e[2J\e[f" unless daemonized?
   end
 
   def alert
@@ -183,6 +205,16 @@ class ConnectionMonitor
 
   def total_duration_seconds
     outages.sum(&:duration_seconds)
+  end
+
+  def write_outages_yaml
+    File.open(yaml_file, "wb") do |file|
+      file << YAML.dump(outages)
+    end
+  end
+
+  def yaml_file
+    "#{Daemon::BASE_DIR}/outages.yml"
   end
 end
 
