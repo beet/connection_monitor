@@ -36,6 +36,7 @@ class ConnectionMonitor
     @stop = args.include?("--stop")
     @show_report = args.include?("--report")
     @show_status = args.include?("--status")
+    @show_config = args.include?("--config")
 
     @config = Config.new(defaults: DEFAULT_CONFIG, base_dir: Daemon::BASE_DIR)
   end
@@ -44,10 +45,11 @@ class ConnectionMonitor
     return stop if stop?
     return report if show_report?
     return status if show_status?
+    return show_config if show_config?
 
     initialize_config(args)
 
-    start if start?
+    start? ? start : show_config
   end
 
   private
@@ -266,6 +268,14 @@ class ConnectionMonitor
   def apply_config(config_hash)
     config_hash.each_pair do |attribute, value|
       instance_variable_set("@#{attribute}", value)
+    end
+  end
+
+  def show_config
+    puts "Config set to:\n\n"
+
+    config.read.each_pair do |key, value|
+      puts "#{key}: #{value}"
     end
   end
 end
