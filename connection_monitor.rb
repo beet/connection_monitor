@@ -12,29 +12,52 @@ end
 class ConnectionMonitor
   POLLING_INTERVAL = 3
   CONNECTION_STATUSES = OpenStruct.new(online: 1, offline: 0)
+  DEFAULT_CONFIG = {
+    verbal_alerts: true,
+    visual_alerts: true,
+  }
 
   include PredicateAttributes
   using ColourizedStrings
   using TimeFormats
 
-  attr_reader :outages, :connection_status
+  attr_reader :args, :outages, :connection_status, :config
 
   def initialize(args)
+    @args = args
     @outages = []
     @connection_status = nil
+
+    # Start command options:
     @debug_mode = args.include?("--debug")
     @daemonized = args.include?("--daemonize")
+
+    # Commands: (default is start)
     @stop = args.include?("--stop")
     @show_report = args.include?("--report")
     @show_status = args.include?("--status")
+
+    @config = Config.new(defaults: DEFAULT_CONFIG, base_dir: Daemon::BASE_DIR)
   end
 
-  def start
-    show_daemon_summary
+  def run
+    return stop if stop?
+    return report if show_report?
+    return status if show_status?
 
+    initialize_config(args)
+
+    start if start?
+  end
+
+  private
+
+  def start
     daemonize
 
     while true
+      refresh_config
+
       current_connection_status = get_connection_status
 
       if current_connection_status != connection_status
@@ -69,6 +92,37 @@ class ConnectionMonitor
     end
   end
 
+  def start?
+    !stop? && !show_report? && !show_status? && !Daemon.running?
+  end
+
+  def stop
+    if Daemon.running? and stop?
+      Daemon.stop!
+    end
+  end
+
+  def report
+    load_outages
+
+    print_connection_status
+
+    print_outage_report
+  end
+
+  def status
+    load_outages
+
+    print_connection_status
+  end
+
+  def load_outages
+    @outages = YAML.load(File.read(yaml_file))
+
+    @connection_status = @outages.any? && @outages.last.resolved? ? CONNECTION_STATUSES.online : CONNECTION_STATUSES.offline
+    @connection_status = CONNECTION_STATUSES.online if @outages.none?
+  end
+
   def connection_status_string
     online? ? "Online" : "Off-line"
   end
@@ -81,30 +135,7 @@ class ConnectionMonitor
     connection_status == CONNECTION_STATUSES.offline
   end
 
-  private
-
-  def show_daemon_summary
-    return unless Daemon.running? && output_mode?
-
-    @outages = YAML.load(File.read(yaml_file))
-
-    @connection_status = @outages.any? && @outages.last.resolved? ? CONNECTION_STATUSES.online : CONNECTION_STATUSES.offline
-    @connection_status = CONNECTION_STATUSES.online if @outages.none?
-
-    print_connection_status
-
-    print_outage_report if show_report?
-
-    exit
-  end
-
   def daemonize
-    if Daemon.running? and @stop
-      Daemon.stop!
-
-      exit
-    end
-
     return unless daemonized?
 
     if Daemon.running?
@@ -156,9 +187,21 @@ class ConnectionMonitor
   end
 
   def alert
-    Process.spawn(%(osascript -e 'display notification "#{outages_count} outages" with title "Internet Connection Monitor" subtitle "#{connection_status_string}" sound name "Submarine"'))
+    verbal_alert
+
+    visual_alert
+  end
+
+  def verbal_alert
+    return unless verbal_alerts?
 
     Process.spawn(%(osascript -e 'say "Internet connection #{connection_status_string}"'))
+  end
+
+  def visual_alert
+    return unless visual_alerts?
+
+    Process.spawn(%(osascript -e 'display notification "#{outages_count} outages" with title "Internet Connection Monitor" subtitle "#{connection_status_string}" sound name "Submarine"'))
   end
 
   def open_new_outage
@@ -210,6 +253,21 @@ class ConnectionMonitor
   def output_mode?
     show_report? || show_status?
   end
+
+  def initialize_config(args)
+    apply_config(config.update(args))
+  end
+
+  def refresh_config
+    apply_config(config.read)
+  end
+
+  # TODO: sanitise the attribute names against default_config?
+  def apply_config(config_hash)
+    config_hash.each_pair do |attribute, value|
+      instance_variable_set("@#{attribute}", value)
+    end
+  end
 end
 
-ConnectionMonitor.new(ARGV).start
+ConnectionMonitor.new(ARGV).run
