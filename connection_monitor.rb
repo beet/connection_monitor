@@ -13,6 +13,7 @@ class ConnectionMonitor
   POLLING_INTERVAL = 3
   CONNECTION_STATUSES = OpenStruct.new(online: 1, offline: 0)
 
+  include PredicateAttributes
   using ColourizedStrings
   using TimeFormats
 
@@ -22,9 +23,10 @@ class ConnectionMonitor
     @outages = []
     @connection_status = nil
     @debug_mode = args.include?("--debug")
-    @daemonize = args.include?("--daemonize")
+    @daemonized = args.include?("--daemonize")
     @stop = args.include?("--stop")
-    @show_summary = args.include?("--report")
+    @show_report = args.include?("--report")
+    @show_status = args.include?("--status")
   end
 
   def start
@@ -60,7 +62,7 @@ class ConnectionMonitor
       sleep POLLING_INTERVAL
     end
   rescue Interrupt, SignalException => exception
-    print_outage_summary
+    print_outage_report
 
     if daemonized?
       alert
@@ -79,18 +81,10 @@ class ConnectionMonitor
     connection_status == CONNECTION_STATUSES.offline
   end
 
-  def debug_mode?
-    @debug_mode == true
-  end
-
-  def daemonized?
-    @daemonize == true
-  end
-
   private
 
   def show_daemon_summary
-    return unless Daemon.running? && @show_summary
+    return unless Daemon.running? && output_mode?
 
     @outages = YAML.load(File.read(yaml_file))
 
@@ -99,7 +93,7 @@ class ConnectionMonitor
 
     print_connection_status
 
-    print_outage_summary
+    print_outage_report if show_report?
 
     exit
   end
@@ -146,7 +140,7 @@ class ConnectionMonitor
 
   def print_connection_status
     puts("\n#{Time.now.long_time_string}:") if daemonized?
-    clear_screen unless @show_summary
+    clear_screen unless output_mode?
 
     puts "Connection status: #{connection_status_string}".send(online? ? :green : :red)
     puts "Outages:           #{outages_count}, #{outage_duration_string}"
@@ -189,7 +183,7 @@ class ConnectionMonitor
     outages.last
   end
 
-  def print_outage_summary
+  def print_outage_report
     puts("\n#{Time.now.long_time_string}:") if daemonized?
 
     puts OutageReport.new(outages).run
@@ -211,6 +205,10 @@ class ConnectionMonitor
 
   def yaml_file
     "#{Daemon::BASE_DIR}/outages.yml"
+  end
+
+  def output_mode?
+    show_report? || show_status?
   end
 end
 
