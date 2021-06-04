@@ -3,40 +3,37 @@ Module for providing predicate method accessors for instance variables.
 
 Before:
 
-```
-class Foo
-  attr_reader :bar
+    class Foo
+      attr_reader :bar
 
-  def initialize
-    @bar = true
-  end
+      def initialize
+        @bar = true
+      end
 
-  def bar?
-    bar
-  end
-end
+      def bar?
+        bar
+      end
+    end
 
-Foo.new.bar?
-=> true
-```
+    Foo.new.bar?
+    => true
 
 After:
 
-```
-class Foo
-  include PredicateAttributes
+    class Foo
+      include PredicateAttributes
 
-  def initialize
-    @bar = "true"
-  end
-end
+      def initialize
+        @bar = "true"
+      end
+    end
 
-Foo.new.bar?
-=> true
+    Foo.new.bar?
+    => true
 
-Foo.new.bar
-=> true
-```
+    Foo.new.bar
+    => true
+
 =end
 module PredicateAttributes
   using Boolean

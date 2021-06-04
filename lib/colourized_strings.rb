@@ -1,3 +1,25 @@
+=begin
+Refinement to wrap strings in ANSI colour codes that colourize them when
+printing to a terminal:
+
+    using ColourizedStrings
+
+    "red".red
+    => "\e[31mred\e[0m"
+
+    "green".green
+    => "\e[32mgreen\e[0m"
+
+Have predefined a few colours:
+
+* red
+* green
+* yellow
+* blue
+* pink
+* light_blue
+
+=end
 module ColourizedStrings
   refine String do
     def red

@@ -1,13 +1,29 @@
+require "yaml"
+
 =begin
 
 The thing that knows about the command line args, turning them into a config
-hash, and persisting it to the DB.
+hash, and persisting it to the DB:
 
-["--debug", "--verbal-alerts=false"]
+    config = Config.new(
+      defaults: {
+        verbal_alerts: false,
+        visual_alerts: true
+      },
+      base_dir: "dir/to/persist/the/config/file"
+    )
+
+To update the config hash and write it to a YAML file:
+
+    config.update(verbal_alerts: true)
+    => { verbal_alerts: true, visual_alerts: true}
+
+To read the config hash from the YAML file:
+
+    config.read
+    => { verbal_alerts: true, visual_alerts: true}
 
 =end
-require "yaml"
-
 class Config
   attr_reader :defaults, :base_dir, :config, :config_file
 
@@ -18,6 +34,7 @@ class Config
     @config_file = "#{base_dir}/config.yml"
   end
 
+  # Read config hash from a YAML file
   def read
     return unless File.exist?(config_file)
 
@@ -26,6 +43,8 @@ class Config
     )
   end
 
+  # Update the config hash from an array of args like ["--debug",
+  # "--verbal-alerts=false"], and write it to a YAML file.
   def update(args)
     read || apply_default_config
 

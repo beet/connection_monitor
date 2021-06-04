@@ -1,9 +1,35 @@
-# Taken from https://gist.github.com/mynameisrufus/1372491/b76b60fb1842bf0507f47869ab19ad50a045b214
+=begin
+
+Taken from this [Double-forking Unix
+daemon](https://gist.github.com/mynameisrufus/1372491/b76b60fb1842bf0507f47869ab19ad50a045b214)
+Gist.
+
+To daemonize the current process:
+
+    Daemon.daemonize!
+
+To check whether there is a daemon running:
+
+    Daemon.running?
+    => true
+
+To display the daemon's PID:
+
+    Daemon.pid
+    => 14235
+
+To stop the daemon:
+
+    Daemon.stop!
+
+=end
 class Daemon
   DAEMON_NAME = "connection_monitor"
   BASE_DIR = "/usr/local/var/#{DAEMON_NAME}"
 
   class << self
+    # Double-forks the current process and writes the PID to a file, redirects
+    # output to .log files in the same dir.
     def daemonize!
       create_working_dir
 
@@ -18,6 +44,8 @@ class Daemon
       redirect_output
     end
 
+    # Returns true/false depending on whether there is a process running with
+    # the PID contained in the daemon's PID file.
     def running?
       begin
         return false unless pid_file_exists?
@@ -28,17 +56,20 @@ class Daemon
       end
     end
 
+    # Reads the daemon's PID from a file.
     def pid
       open(filename("pid")).read.strip.to_i
     rescue Errno::ENOENT
     end
 
+    # Stops the daemon and cleans up the PID file.
     def stop!
       kill_process
 
       cleanup
     end
 
+    # Deletes the PID file, if it exists.
     def cleanup
       File.delete(filename("pid"))
     rescue Errno::ENOENT
