@@ -177,8 +177,9 @@ class ConnectionMonitor
     puts("\n#{Time.now.long_time_string}:") if daemonized?
     clear_screen unless output_mode?
 
-    puts "Connection status: #{connection_status_string}".send(online? ? :green : :red)
+    puts "Connection status: #{connection_status_string.send(online? ? :green : :red)}"
     puts "Outages:           #{outages_count}, #{outage_duration_string}"
+    puts "Daemon:            #{Daemon.running? ? "Running".green : "Not running".red}"
 
     return if current_outage.nil?
 
