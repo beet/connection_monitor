@@ -30,11 +30,12 @@ Object to represent an connection outage:
 class ConnectionOutage
   using TimeFormats
 
-  attr_reader :start_time, :attempts
+  attr_reader :start_time, :attempts, :connection_status
 
-  def initialize
+  def initialize(connection_status)
     @start_time = Time.now
     @attempts = 0
+    @connection_status = connection_status
   end
 
   # Increment a counter each time a connection attempt is made
@@ -57,19 +58,25 @@ class ConnectionOutage
     @end_time = Time.now
   end
 
+  # Show a long summary of the outage including the start & end date & time, the
+  # connection error, duration, and no. of connection attempts.
   def long_summary
-    "%s - %s, duration %s, %d attempts" % [
+    "%s - %s, %s, duration %s, %d attempts" % [
       start_time.long_time_string,
       end_time.long_time_string,
+      connection_status.error_message,
       duration_string,
       attempts
     ]
   end
 
+  # Show a short summary of the outage showing the start & end time, connection
+  # error, duration, and no. of attempts
   def short_summary
-    "%s - %s, duration %s, %d attempts" % [
+    "%s - %s, %s, duration %s, %d attempts" % [
       start_time.short_time_string,
       end_time.short_time_string,
+      connection_status.error_message,
       duration_string,
       attempts
     ]

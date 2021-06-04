@@ -102,6 +102,12 @@ class ConnectionStatus
     end
   end
 
+  def error_message
+    return "debugging" if exception.nil?
+
+    "#{exception.class}: #{exception.message}"
+  end
+
   # Dummy connection status that is in an online state
   class Online < ConnectionStatus
     # True

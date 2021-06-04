@@ -66,7 +66,7 @@ class ConnectionMonitor
         end
 
         if current_connection_status.offline?
-          open_new_outage
+          open_new_outage(current_connection_status)
         end
 
         @connection_status = current_connection_status
@@ -195,8 +195,8 @@ class ConnectionMonitor
     Process.spawn(%(osascript -e 'display notification "#{outages_count} outages" with title "Internet Connection Monitor" subtitle "#{connection_status_string}" sound name "Submarine"'))
   end
 
-  def open_new_outage
-    @outages << ConnectionOutage.new
+  def open_new_outage(connection_status)
+    @outages << ConnectionOutage.new(connection_status)
   end
 
   def outages_count
