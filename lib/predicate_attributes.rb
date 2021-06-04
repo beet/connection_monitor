@@ -27,6 +27,13 @@ After:
         @bar = "true"
       end
     end
+    class Foo
+      include PredicateAttributes
+
+      def initialize
+        @bar = "true"
+      end
+    end
 
     Foo.new.bar?
     => true
@@ -34,13 +41,33 @@ After:
     Foo.new.bar
     => true
 
+If the value of the attribute is not truthy/falsey, it will pass it through:
+
+    class Foo
+      include PredicateAttributes
+
+      def initialize
+        @foo = "bar"
+      end
+    end
+
+    foo = Foo.new
+
+    foo.foo?
+    => "bar"
+
+    foo.bar
+    => "bar"
+    
 =end
 module PredicateAttributes
   using Boolean
 
   def method_missing(method_name)
     if has_predicate_attribute_for?(method_name)
-      instance_variable_get(instance_variable_sym_for(method_name)).true?
+      value = instance_variable_get(instance_variable_sym_for(method_name))
+
+      value.is_boolean? ? value.true? : value
     else
       super
     end

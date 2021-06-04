@@ -41,9 +41,9 @@ class ConnectionMonitor
     return stop if stop?
     return report if show_report?
     return status if show_status?
-    return show_config if show_config?
+    return config.show if show_config?
 
-    initialize_config(args)
+    config.update(args)
 
     start? ? start : tail_logs
   end
@@ -56,7 +56,7 @@ class ConnectionMonitor
     daemonize
 
     while true
-      refresh_config
+      config.read
 
       current_connection_status = get_connection_status
 
@@ -184,13 +184,13 @@ class ConnectionMonitor
   end
 
   def verbal_alert
-    return unless verbal_alerts?
+    return unless config.verbal_alerts?
 
     Process.spawn(%(osascript -e 'say "Internet connection #{connection_status_string}"'))
   end
 
   def visual_alert
-    return unless visual_alerts?
+    return unless config.visual_alerts?
 
     Process.spawn(%(osascript -e 'display notification "#{outages_count} outages" with title "Internet Connection Monitor" subtitle "#{connection_status_string}" sound name "Submarine"'))
   end
@@ -243,29 +243,6 @@ class ConnectionMonitor
 
   def output_mode?
     show_report? || show_status?
-  end
-
-  def initialize_config(args)
-    apply_config(config.update(args))
-  end
-
-  def refresh_config
-    apply_config(config.read)
-  end
-
-  # TODO: sanitise the attribute names against default_config?
-  def apply_config(config_hash)
-    config_hash.each_pair do |attribute, value|
-      instance_variable_set("@#{attribute}", value)
-    end
-  end
-
-  def show_config
-    puts "Config from #{config.config_file}:\n\n"
-
-    config.read.each_pair do |key, value|
-      puts "#{key}: #{value}"
-    end
   end
 
   def tail_logs

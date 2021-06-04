@@ -1,4 +1,5 @@
 require "yaml"
+require_relative "#{__dir__}/predicate_attributes"
 
 =begin
 
@@ -23,8 +24,29 @@ To read the config hash from the YAML file:
     config.read
     => { verbal_alerts: true, visual_alerts: true}
 
+## Predicate method accessors and getter methods
+
+Each key in the config hash can be access with a corresponding predicate method:
+
+    config.update(visual_alerts: false)
+
+    config.visual_alerts?
+    => false
+
+For non-boolean attributes:
+
+    config.update(foo: "bar")
+
+    config.foo?
+    => "bar"
+
+    config.foo
+    => "bar"
+
 =end
 class Config
+  include PredicateAttributes
+
   attr_reader :defaults, :base_dir, :config, :config_file
 
   def initialize(defaults:, base_dir:)
@@ -55,6 +77,14 @@ class Config
     config
   end
 
+  def show
+    puts "Config from #{config_file}:\n\n"
+
+    read.each_pair do |key, value|
+      puts "#{key}: #{value}"
+    end
+  end
+
   private
 
   def write_config
@@ -71,6 +101,10 @@ class Config
   # TODO: sanitise the attribute names against defaults?
   def apply_config(config_data)
     config.merge!(config_data)
+
+    config.each_pair do |attribute, value|
+      instance_variable_set("@#{attribute}", value)
+    end
   end
 
   def process_config_from(args)
