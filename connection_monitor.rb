@@ -1,7 +1,4 @@
 #!/usr/bin/env ruby
-require "socket"
-require "ostruct"
-require "timeout"
 require "fileutils"
 require "yaml"
 
@@ -11,7 +8,6 @@ end
 
 class ConnectionMonitor
   POLLING_INTERVAL = 3
-  CONNECTION_STATUSES = OpenStruct.new(online: 1, offline: 0)
   DEFAULT_CONFIG = {
     verbal_alerts: true,
     visual_alerts: true,
@@ -26,7 +22,7 @@ class ConnectionMonitor
   def initialize(args)
     @args = args
     @outages = []
-    @connection_status = nil
+    @connection_status = ConnectionStatus::Null.new
 
     # Start command options:
     @debug_mode = args.include?("--debug")
@@ -65,11 +61,11 @@ class ConnectionMonitor
       current_connection_status = get_connection_status
 
       if current_connection_status != connection_status
-        if current_connection_status == CONNECTION_STATUSES.online
+        if current_connection_status.online?
           close_current_outage
         end
 
-        if current_connection_status == CONNECTION_STATUSES.offline
+        if current_connection_status.offline?
           open_new_outage
         end
 
@@ -123,8 +119,8 @@ class ConnectionMonitor
   def load_outages
     @outages = YAML.load(File.read(yaml_file))
 
-    @connection_status = @outages.any? && @outages.last.resolved? ? CONNECTION_STATUSES.online : CONNECTION_STATUSES.offline
-    @connection_status = CONNECTION_STATUSES.online if @outages.none?
+    @connection_status = @outages.any? && @outages.last.resolved? ? ConnectionStatus::Online.new : ConnectionStatus::Offline.new
+    @connection_status = ConnectionStatus::Online.new if @outages.none?
   end
 
   def connection_status_string
@@ -132,11 +128,11 @@ class ConnectionMonitor
   end
 
   def online?
-    connection_status == CONNECTION_STATUSES.online
+    connection_status.online?
   end
 
   def offline?
-    connection_status == CONNECTION_STATUSES.offline
+    connection_status.offline?
   end
 
   def daemonize
@@ -153,20 +149,10 @@ class ConnectionMonitor
 
   def get_connection_status
     if debug_mode?
-      return rand(100) > 75 ? CONNECTION_STATUSES.online : CONNECTION_STATUSES.offline
+      return rand(100) > 75 ? ConnectionStatus::Online.new : ConnectionStatus::Offline.new
     end
 
-    begin
-      Timeout::timeout(5, Errno::EHOSTUNREACH) do
-        if socket = TCPSocket.new("google.com", 80)
-          socket.close
-
-          return CONNECTION_STATUSES.online
-        end
-      end
-    rescue SocketError, Errno::EHOSTUNREACH, Errno::ENETUNREACH => e
-      return CONNECTION_STATUSES.offline
-    end
+    ConnectionStatus.new
   end
 
   def uri
