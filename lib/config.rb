@@ -9,12 +9,13 @@ hash, and persisting it to the DB.
 require "yaml"
 
 class Config
-  attr_reader :defaults, :base_dir, :config
+  attr_reader :defaults, :base_dir, :config, :config_file
 
   def initialize(defaults:, base_dir:)
     @defaults = defaults
     @base_dir = base_dir
     @config = {}
+    @config_file = "#{base_dir}/config.yml"
   end
 
   def read
@@ -42,10 +43,6 @@ class Config
       # file << YAML.dump(config_vars_to_hash)
       file << YAML.dump(config)
     end
-  end
-
-  def config_file
-    "#{base_dir}/config.yml"
   end
 
   def apply_default_config

@@ -261,7 +261,7 @@ class ConnectionMonitor
   end
 
   def show_config
-    puts "Config set to:\n\n"
+    puts "Config from #{config.config_file}:\n\n"
 
     config.read.each_pair do |key, value|
       puts "#{key}: #{value}"
