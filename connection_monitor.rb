@@ -49,11 +49,13 @@ class ConnectionMonitor
 
     initialize_config(args)
 
-    start? ? start : show_config
+    start? ? start : tail_logs
   end
 
   private
 
+  # Start the main monitor loop. Will daemonize if started with the --daemonize
+  # option.
   def start
     daemonize
 
@@ -277,6 +279,16 @@ class ConnectionMonitor
     config.read.each_pair do |key, value|
       puts "#{key}: #{value}"
     end
+  end
+
+  def tail_logs
+    while true
+      status
+
+      sleep POLLING_INTERVAL
+    end
+  rescue Interrupt, SignalException => exception
+    print_outage_report
   end
 end
 
