@@ -232,7 +232,7 @@ class ConnectionMonitor
   end
 
   def write_outages_yaml
-    File.open(yaml_file, "wb") do |file|
+    File.open(yaml_file, "ab") do |file|
       file << YAML.dump(outages)
     end
   end
