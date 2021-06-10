@@ -133,7 +133,6 @@ class Daemon
     # Redirect file descriptors inherited from the parent.
     def redirect_output
       $stdin.reopen '/dev/null'
-      $stdout.reopen File.new(filename("stdout.log"), "a")
       $stderr.reopen File.new(filename("stderr.log"), "a")
       $stdout.sync = $stderr.sync = true
     end
