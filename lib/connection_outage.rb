@@ -1,5 +1,6 @@
 require "date"
-require_relative "#{__dir__}/time_formats.rb"
+require_relative "#{__dir__}/time_formats"
+require_relative "#{__dir__}/colourized_strings"
 
 =begin
 Object to represent an connection outage:
@@ -29,6 +30,7 @@ Object to represent an connection outage:
 =end
 class ConnectionOutage
   using TimeFormats
+  using ColourizedStrings
 
   attr_reader :start_time, :attempts, :connection_status
 
@@ -65,7 +67,7 @@ class ConnectionOutage
       start_time.long_time_string,
       end_time.long_time_string,
       connection_status.error_message,
-      duration_string,
+      duration_string.underline,
       attempts
     ]
   end
@@ -74,10 +76,10 @@ class ConnectionOutage
   # error, duration, and no. of attempts
   def short_summary
     "%s - %s, %s, duration %s, %d attempts" % [
-      start_time.short_time_string,
-      end_time.short_time_string,
+      start_time.short_time_string.light_blue,
+      end_time.short_time_string.light_blue,
       connection_status.error_message,
-      duration_string,
+      duration_string.underline,
       attempts
     ]
   end

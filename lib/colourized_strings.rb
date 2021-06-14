@@ -46,6 +46,22 @@ module ColourizedStrings
       colorize(36)
     end
 
+    def bold
+      "\033[1m#{self}\033[0m"
+    end
+
+    def light
+      "\033[2m#{self}\033[0m"
+    end
+
+    def underline
+      "\033[4m#{self}\033[0m"
+    end
+
+    def inverted
+      "\033[7m#{self}\033[0m"
+    end
+
     private
 
     def colorize(color_code)

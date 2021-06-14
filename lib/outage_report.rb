@@ -1,4 +1,5 @@
-require_relative "#{__dir__}/time_formats.rb"
+require_relative "#{__dir__}/time_formats"
+require_relative "#{__dir__}/colourized_strings"
 
 =begin
 Object that tages a collection of connection outages and prints out a report:
@@ -26,6 +27,7 @@ Produces an output like:
 =end
 class OutageReport
   using TimeFormats
+  using ColourizedStrings
 
   attr_reader :outages
 
@@ -42,7 +44,8 @@ class OutageReport
         outages_for_date(date).tap do |outages_for_date|
           total_duration = outages_for_date.sum(&:duration_seconds)
 
-          report << "#{date.to_date_string}: out for #{total_duration.to_duration_string}\n\n"
+          report << "#{date.to_date_string}: out for #{total_duration.to_duration_string.underline}".bold
+          report << "\n\n"
 
           outages_for_date.each do |outage|
             report << "* #{outage.short_summary}\n"
