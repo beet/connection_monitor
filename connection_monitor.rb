@@ -55,6 +55,8 @@ class ConnectionMonitor
   def start
     daemonize
 
+    load_outages
+
     while true
       config.read
 
@@ -117,7 +119,11 @@ class ConnectionMonitor
   end
 
   def load_outages
-    @outages = YAML.load(File.read(yaml_file))
+    begin
+      @outages = YAML.load(File.read(yaml_file))
+    rescue Errno::ENOENT
+      @outages = []
+    end
 
     @connection_status = @outages.any? && @outages.last.resolved? ? ConnectionStatus::Online.new : ConnectionStatus::Offline.new
     @connection_status = ConnectionStatus::Online.new if @outages.none?
@@ -232,13 +238,13 @@ class ConnectionMonitor
   end
 
   def write_outages_yaml
-    File.open(yaml_file, "ab") do |file|
+    File.open(yaml_file, "wb") do |file|
       file << YAML.dump(outages)
     end
   end
 
   def yaml_file
-    "#{Daemon::BASE_DIR}/outages.yml"
+    "#{Daemon::BASE_DIR}/outages#{"_debug" if debug_mode?}.yml"
   end
 
   def output_mode?
