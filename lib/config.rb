@@ -88,6 +88,8 @@ class Config
   private
 
   def write_config
+    FileUtils.mkdir_p(base_dir)
+
     File.open(config_file, "wb") do |file|
       # file << YAML.dump(config_vars_to_hash)
       file << YAML.dump(config)
