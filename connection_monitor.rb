@@ -25,7 +25,7 @@ class ConnectionMonitor
     @connection_status = ConnectionStatus::Null.new
 
     # Start command options:
-    @debug_mode = args.include?("--debug")
+    @debug_mode = args.include?("--debug") # NOTE: this argument is ignored when already running as a daemon
     @daemonized = args.include?("--daemonize")
 
     # Commands: (default is start)
@@ -45,7 +45,7 @@ class ConnectionMonitor
 
     config.update(args)
 
-    start? ? start : tail_logs
+    start? ? start : tail_logs # TODO: print the config summary and exit when only config options present in args
   end
 
   private
@@ -77,6 +77,9 @@ class ConnectionMonitor
 
         alert
 
+        # TODO: doesn't update the attempts count during the current outage. Way
+        # to do that without writing on every iteration? Is the attempts count
+        # even relevant?
         write_outages_yaml
       end
 
